@@ -22,10 +22,16 @@ public class MovieCreateView {
         String nextPage = "";
         try {
             movieService.addMovie(newMovie);
-            Messages.addFlashGlobalInfo("Create was successful. {0}", newMovie.getId());
+            Messages.addFlashGlobalInfo(
+                    "Create was successful. {0}", newMovie.getId()
+            );
             nextPage = "index?faces-redirect=true";
+        } catch (RuntimeException ex) {
+            Messages.addGlobalWarn(ex.getMessage());
         } catch (Exception e) {
-            Messages.addGlobalError("Create was not successful. {0}", e.getMessage());
+            Messages.addGlobalError(
+                    "Create was not successful. {0}", e.getMessage()
+            );
         }
         return nextPage;
     }

@@ -29,6 +29,8 @@ public class MovieListView implements Serializable {
     public void init() {
         try {
             movies = movieService.getAllMovies();
+        } catch (RuntimeException ex) {
+            Messages.addGlobalWarn(ex.getMessage());
         } catch (Exception ex) {
             Messages.addGlobalError(ex.getMessage());
         }

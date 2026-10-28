@@ -9,8 +9,14 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import jakarta.inject.Inject;
+import jakarta.security.enterprise.SecurityContext;
+
 @ApplicationScoped
 public class MovieService {
+
+    @Inject
+    private SecurityContext securityContext;
 
     @Inject
     private MovieRepository movieRepository;
@@ -20,6 +26,11 @@ public class MovieService {
 
         movie.setCreateTime(now);
         movie.setUpdateTime(now);
+
+        String username =
+                securityContext.getCallerPrincipal().getName();
+
+        movie.setUsername(username);
 
         movieRepository.insert(movie);
     }
@@ -39,6 +50,35 @@ public class MovieService {
     }
 
     public List<Movie> getAllMovies() {
+
+        String username =
+                securityContext.getCallerPrincipal().getName();
+
+        if (username.equalsIgnoreCase("anonymous")) {
+            throw new RuntimeException(
+                    "Access Denied. Anonymous users do not have " +
+                            "permission to access this method."
+            );
+        }
+
+        boolean hasRequiredRoles =
+                securityContext.isCallerInRole("Sales")
+                        || securityContext.isCallerInRole("Administration");
+
+        if (!hasRequiredRoles) {
+            throw new RuntimeException(
+                    "Access denied. You role does not have " +
+                            "permission to access this method."
+            );
+        }
+
+        boolean hasSalesRole =
+                securityContext.isCallerInRole("Sales");
+
+        if (hasSalesRole) {
+            return movieRepository.findAllByUsername(username);
+        }
+
         return movieRepository.findAll();
     }
 

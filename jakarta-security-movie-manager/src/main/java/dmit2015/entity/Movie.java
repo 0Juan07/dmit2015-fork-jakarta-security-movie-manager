@@ -27,6 +27,9 @@ public class Movie implements Serializable {
     @Column(name = "movieid", unique = true, nullable = false)
     private Long id;
 
+    @Column(length = 32, nullable = false)
+    private String username;
+
     @Column(length = 60, nullable = false)
     @NotBlank(message = "The Title field is required.")
     @Size(min = 3, max = 60, message = "The field Title must be a string with a minimum length of {min} and a maximum length of {max}.")
