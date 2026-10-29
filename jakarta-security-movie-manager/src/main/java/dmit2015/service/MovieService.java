@@ -22,13 +22,17 @@ public class MovieService {
     private MovieRepository movieRepository;
 
     public void addMovie(Movie movie) {
+
+        if (!securityContext.isCallerInRole("Sales")) {
+            throw new RuntimeException("Access denied, only Sales people can create movies");
+        }
+
         LocalDateTime now = LocalDateTime.now();
 
         movie.setCreateTime(now);
         movie.setUpdateTime(now);
 
-        String username =
-                securityContext.getCallerPrincipal().getName();
+        String username = securityContext.getCallerPrincipal().getName();
 
         movie.setUsername(username);
 
@@ -36,6 +40,34 @@ public class MovieService {
     }
 
     public void updateMovie(Movie movie) {
+
+        if (!securityContext.isCallerInRole("Sales")) {
+            throw new RuntimeException(
+                    "Access denied. Only Sales can edit movies."
+            );
+        }
+
+        if (movie == null || movie.getId() == null) {
+            throw new RuntimeException("Invalid movie.");
+        }
+
+        Movie storedMovie = movieRepository
+                .findOptionalById(movie.getId())
+                .orElseThrow(() ->
+                        new RuntimeException("Movie not found.")
+                );
+
+        String username =
+                securityContext.getCallerPrincipal().getName();
+
+        if (!username.equals(storedMovie.getUsername())) {
+            throw new RuntimeException(
+                    "Access denied. You cannot edit this movie."
+            );
+        }
+
+        movie.setUsername(storedMovie.getUsername());
+        movie.setCreateTime(storedMovie.getCreateTime());
         movie.setUpdateTime(LocalDateTime.now());
 
         movieRepository.update(movie);
@@ -46,34 +78,39 @@ public class MovieService {
     }
 
     public Optional<Movie> findMovieById(Long movieId) {
-        return movieRepository.findOptionalById(movieId);
+
+        boolean isAdmin = securityContext.isCallerInRole("Administration");
+        boolean isSales = securityContext.isCallerInRole("Sales");
+
+        if (!isAdmin && !isSales) throw new RuntimeException("Access Denied");
+        if (movieId == null) return Optional.empty();
+
+        Optional<Movie> result = movieRepository.findOptionalById(movieId);
+
+        if (result.isPresent() && !isAdmin) {
+            String username = securityContext.getCallerPrincipal().getName();
+            if (!username.equals(result.get().getUsername()))
+                throw new RuntimeException("Access Denied. Not your movie");
+        }
+
+        return result;
     }
 
     public List<Movie> getAllMovies() {
 
-        String username =
-                securityContext.getCallerPrincipal().getName();
+        String username = securityContext.getCallerPrincipal().getName();
 
         if (username.equalsIgnoreCase("anonymous")) {
-            throw new RuntimeException(
-                    "Access Denied. Anonymous users do not have " +
-                            "permission to access this method."
-            );
+            throw new RuntimeException("Access Denied. Anonymous users do not have " + "permission to access this method.");
         }
 
-        boolean hasRequiredRoles =
-                securityContext.isCallerInRole("Sales")
-                        || securityContext.isCallerInRole("Administration");
+        boolean hasRequiredRoles = securityContext.isCallerInRole("Sales") || securityContext.isCallerInRole("Administration");
 
         if (!hasRequiredRoles) {
-            throw new RuntimeException(
-                    "Access denied. You role does not have " +
-                            "permission to access this method."
-            );
+            throw new RuntimeException("Access denied. You role does not have " + "permission to access this method.");
         }
 
-        boolean hasSalesRole =
-                securityContext.isCallerInRole("Sales");
+        boolean hasSalesRole = securityContext.isCallerInRole("Sales");
 
         if (hasSalesRole) {
             return movieRepository.findAllByUsername(username);
